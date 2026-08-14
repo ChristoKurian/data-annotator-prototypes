@@ -4,6 +4,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { track } from '@/lib/analytics'
+import { saveResult, summarizeAnnotations } from '@/lib/results'
 import TopBar from './TopBar'
 import LeftRail from './LeftRail'
 import CanvasStage from './CanvasStage'
@@ -24,6 +25,10 @@ function formatDuration(ms) {
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
   return minutes === 0 ? `${seconds}s` : `${minutes}m ${seconds}s`
+}
+
+function formatAvgDuration(ms) {
+  return `${Math.max(0, ms / 1000).toFixed(1)}s`
 }
 
 export default function DataAnnotatorApp() {
@@ -153,7 +158,9 @@ export default function DataAnnotatorApp() {
   const handleSubmit = () => {
     if (submission) return
     const duration_ms = Date.now() - (taskStartRef.current ?? Date.now())
-    setSubmission({ durationMs: duration_ms, count: annotations.length })
+    const summary = summarizeAnnotations(annotations, duration_ms)
+    saveResult('v1', summary)
+    setSubmission(summary)
     track('task_submitted', {
       duration_ms,
       annotation_count: annotations.length,
@@ -166,7 +173,7 @@ export default function DataAnnotatorApp() {
     return (
       <div className="flex h-screen w-screen flex-col items-center justify-center gap-6 bg-zinc-950 text-zinc-100">
         <div className="flex flex-col items-center gap-2 text-center">
-          <h1 className="text-lg font-medium text-zinc-200">Data Annotation Task</h1>
+          <h1 className="text-lg font-medium text-zinc-200">Annotate 5 Buses, 25 Cars, and 25 Bikes</h1>
           <p className="text-sm text-zinc-500">Draw a shape, then pick its label from the search popup.</p>
         </div>
         <Button size="lg" onClick={handleStart} className="bg-blue-600 px-8 text-white hover:bg-blue-500">
@@ -276,13 +283,44 @@ export default function DataAnnotatorApp() {
 
       {submission && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-zinc-950/70 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-white/10 bg-zinc-900 px-8 py-7 text-center shadow-2xl">
+          <div className="flex w-[min(90vw,360px)] flex-col items-center gap-4 rounded-xl border border-white/10 bg-zinc-900 px-8 py-7 text-center shadow-2xl">
             <div className="flex size-10 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400">
               <Check className="size-5" />
             </div>
             <div className="text-base font-medium text-zinc-100">Activity completed</div>
-            <div className="text-sm text-zinc-500">Completed in {formatDuration(submission.durationMs)}</div>
-            <Button asChild className="mt-2 bg-blue-600 text-white hover:bg-blue-500">
+
+            <div className="grid w-full grid-cols-2 gap-2 text-left">
+              <div className="rounded-md border border-white/10 bg-zinc-950 px-3 py-2">
+                <div className="text-[10px] tracking-wide text-zinc-500 uppercase">Total time</div>
+                <div className="text-sm font-medium text-zinc-100">{formatDuration(submission.durationMs)}</div>
+              </div>
+              <div className="rounded-md border border-white/10 bg-zinc-950 px-3 py-2">
+                <div className="text-[10px] tracking-wide text-zinc-500 uppercase">Avg / annotation</div>
+                <div className="text-sm font-medium text-zinc-100">
+                  {submission.count > 0 ? formatAvgDuration(submission.avgMs) : '—'}
+                </div>
+              </div>
+            </div>
+
+            {submission.count > 0 && (
+              <div className="w-full text-left">
+                <div className="mb-1.5 text-[10px] tracking-wide text-zinc-500 uppercase">
+                  Annotations by label ({submission.count})
+                </div>
+                <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-white/10 bg-zinc-950 p-2">
+                  {Object.entries(submission.perLabel)
+                    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+                    .map(([label, count]) => (
+                      <div key={label} className="flex items-center justify-between text-xs text-zinc-300">
+                        <span>{label}</span>
+                        <span className="font-mono text-zinc-500">{count}</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            <Button asChild className="w-full bg-blue-600 text-white hover:bg-blue-500">
               <a href="/v2.html">Try the V2 flow</a>
             </Button>
           </div>

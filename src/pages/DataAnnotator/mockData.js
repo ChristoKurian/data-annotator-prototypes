@@ -17,7 +17,7 @@ export const ANNOTATION_COLORS = [
   '#ef4444', // red
 ]
 
-export const LABEL_OPTIONS = [
+const RAW_LABEL_OPTIONS = [
   'Car',
   'Bike',
   'Pedestrian',
@@ -25,7 +25,28 @@ export const LABEL_OPTIONS = [
   'Road Sign',
   'Traffic light',
   'Vehicle',
+  'Bus',
+  'Truck',
+  'Van',
+  'Taxi',
+  'Helmet',
+  'Traffic Cone',
+  'Street Vendor',
+  'Cargo Basket',
+  'Umbrella',
+  'Storefront Sign',
+  'Streetlamp',
+  'Utility Pole',
+  'Crosswalk',
+  'Overpass',
+  'Building',
+  'Awning',
+  'Antenna',
+  'Ad Banner',
 ]
+
+// Alphabetical — V1's search popup is scanned by name, not by frequency.
+export const LABEL_OPTIONS = [...RAW_LABEL_OPTIONS].sort((a, b) => a.localeCompare(b))
 
 export const OCCLUSION_OPTIONS = ['1-50%', '50-75%', '75%-100%']
 

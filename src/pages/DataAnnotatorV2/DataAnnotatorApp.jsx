@@ -4,6 +4,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { track } from '@/lib/analytics'
+import { loadResult, saveResult, summarizeAnnotations } from '@/lib/results'
 import TopBar from './TopBar'
 import CanvasToolbar from './CanvasToolbar'
 import CanvasStage from './CanvasStage'
@@ -16,6 +17,10 @@ function formatDuration(ms) {
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
   return minutes === 0 ? `${seconds}s` : `${minutes}m ${seconds}s`
+}
+
+function formatAvgDuration(ms) {
+  return `${Math.max(0, ms / 1000).toFixed(1)}s`
 }
 
 export default function DataAnnotatorApp() {
@@ -223,7 +228,9 @@ export default function DataAnnotatorApp() {
   const handleSubmit = () => {
     if (submission) return
     const duration_ms = Date.now() - (taskStartRef.current ?? Date.now())
-    setSubmission({ durationMs: duration_ms, count: annotations.length })
+    const summary = summarizeAnnotations(annotations, duration_ms)
+    saveResult('v2', summary)
+    setSubmission({ v1: loadResult('v1'), v2: summary })
     track('task_submitted', {
       duration_ms,
       annotation_count: annotations.length,
@@ -254,7 +261,7 @@ export default function DataAnnotatorApp() {
     return (
       <div className="flex h-screen w-screen flex-col items-center justify-center gap-6 bg-zinc-950 text-zinc-100">
         <div className="flex flex-col items-center gap-2 text-center">
-          <h1 className="text-lg font-medium text-zinc-200">Data Annotation Task</h1>
+          <h1 className="text-lg font-medium text-zinc-200">Annotate 5 Buses, 25 Cars, and 25 Bikes</h1>
           <p className="text-sm text-zinc-500">Pick a label first, then draw every instance of it in a row.</p>
         </div>
         <Button size="lg" onClick={handleStart} className="bg-blue-600 px-8 text-white hover:bg-blue-500">
@@ -319,6 +326,7 @@ export default function DataAnnotatorApp() {
                 onRejectAutoLabel={handleRejectAutoLabel}
                 onDismissSuggestion={(id) => setDismissedSuggestionIds((prev) => new Set(prev).add(id))}
                 zoom={zoom}
+                onZoomChange={setZoom}
                 panMode={panMode}
                 panOffset={panOffset}
                 onPanOffsetChange={setPanOffset}
@@ -337,6 +345,7 @@ export default function DataAnnotatorApp() {
                 onTogglePan={() => setPanMode((v) => !v)}
                 onZoomIn={() => setZoom((z) => Math.min(2.5, +(z + 0.2).toFixed(2)))}
                 onZoomOut={() => setZoom((z) => Math.max(1, +(z - 0.2).toFixed(2)))}
+                onZoomChange={setZoom}
                 zoom={zoom}
               />
             </div>
@@ -360,16 +369,61 @@ export default function DataAnnotatorApp() {
 
       {submission && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-zinc-950/70 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-white/10 bg-zinc-900 px-8 py-7 text-center shadow-2xl">
+          <div className="flex w-[min(92vw,640px)] flex-col items-center gap-4 rounded-xl border border-white/10 bg-zinc-900 px-8 py-7 text-center shadow-2xl">
             <div className="flex size-10 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400">
               <Check className="size-5" />
             </div>
             <div className="text-base font-medium text-zinc-100">Activity completed</div>
-            <div className="text-sm text-zinc-500">Completed in {formatDuration(submission.durationMs)}</div>
+
+            <div className="grid w-full grid-cols-2 gap-4">
+              <SummaryColumn title="V1" summary={submission.v1} />
+              <SummaryColumn title="V2" summary={submission.v2} />
+            </div>
           </div>
         </div>
       )}
       </div>
     </TooltipProvider>
+  )
+}
+
+function SummaryColumn({ title, summary }) {
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-white/10 bg-zinc-950 p-3 text-left">
+      <div className="text-xs font-semibold tracking-wide text-zinc-300 uppercase">{title}</div>
+      {!summary ? (
+        <div className="text-xs text-zinc-500">No completed run yet.</div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <div className="text-[10px] tracking-wide text-zinc-500 uppercase">Total time</div>
+              <div className="text-sm font-medium text-zinc-100">{formatDuration(summary.durationMs)}</div>
+            </div>
+            <div>
+              <div className="text-[10px] tracking-wide text-zinc-500 uppercase">Avg / item</div>
+              <div className="text-sm font-medium text-zinc-100">
+                {summary.count > 0 ? formatAvgDuration(summary.avgMs) : '—'}
+              </div>
+            </div>
+          </div>
+          {summary.count > 0 && (
+            <div>
+              <div className="mb-1 text-[10px] tracking-wide text-zinc-500 uppercase">By label ({summary.count})</div>
+              <div className="max-h-32 space-y-1 overflow-y-auto rounded-md border border-white/10 bg-zinc-900 p-2">
+                {Object.entries(summary.perLabel)
+                  .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+                  .map(([label, count]) => (
+                    <div key={label} className="flex items-center justify-between text-xs text-zinc-300">
+                      <span>{label}</span>
+                      <span className="font-mono text-zinc-500">{count}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
   )
 }

@@ -20,7 +20,7 @@ export const ANNOTATION_COLORS = [
 // Labels available for chunked (label-first) annotation. `aiAvailable: false`
 // means no trained model exists yet for that label, so Auto Label can't
 // suggest it — surfaced as a disabled pill with an explanatory tooltip.
-export const LABELS = [
+const RAW_LABELS = [
   { id: 'car', name: 'Car', aiAvailable: true },
   { id: 'bike', name: 'Bike', aiAvailable: true },
   { id: 'pedestrian', name: 'Pedestrian', aiAvailable: true },
@@ -28,7 +28,28 @@ export const LABELS = [
   { id: 'road-sign', name: 'Road Sign', aiAvailable: false },
   { id: 'traffic-light', name: 'Traffic light', aiAvailable: false },
   { id: 'vehicle', name: 'Vehicle', aiAvailable: true },
+  { id: 'bus', name: 'Bus', aiAvailable: true },
+  { id: 'truck', name: 'Truck', aiAvailable: true },
+  { id: 'van', name: 'Van', aiAvailable: true },
+  { id: 'taxi', name: 'Taxi', aiAvailable: true },
+  { id: 'helmet', name: 'Helmet', aiAvailable: true },
+  { id: 'traffic-cone', name: 'Traffic Cone', aiAvailable: false },
+  { id: 'street-vendor', name: 'Street Vendor', aiAvailable: false },
+  { id: 'cargo-basket', name: 'Cargo Basket', aiAvailable: true },
+  { id: 'umbrella', name: 'Umbrella', aiAvailable: false },
+  { id: 'storefront-sign', name: 'Storefront Sign', aiAvailable: true },
+  { id: 'streetlamp', name: 'Streetlamp', aiAvailable: false },
+  { id: 'utility-pole', name: 'Utility Pole', aiAvailable: false },
+  { id: 'crosswalk', name: 'Crosswalk', aiAvailable: false },
+  { id: 'overpass', name: 'Overpass', aiAvailable: false },
+  { id: 'building', name: 'Building', aiAvailable: true },
+  { id: 'awning', name: 'Awning', aiAvailable: true },
+  { id: 'antenna', name: 'Antenna', aiAvailable: false },
+  { id: 'ad-banner', name: 'Ad Banner', aiAvailable: true },
 ]
+
+// Alphabetical — matches V1's ordering.
+export const LABELS = [...RAW_LABELS].sort((a, b) => a.name.localeCompare(b.name))
 
 export const LABEL_OPTIONS = LABELS.map((l) => l.name)
 

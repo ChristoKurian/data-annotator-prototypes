@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useContainRect } from './useContainRect'
@@ -7,6 +7,9 @@ import AutoLabelBar from './AutoLabelBar'
 
 const MIN_BOX_SIZE = 1.2 // percent
 const CLOSE_RADIUS = 2.2 // percent, distance to first point that closes a polygon
+const ZOOM_MIN = 1
+const ZOOM_MAX = 2.5
+const WHEEL_ZOOM_SENSITIVITY = 0.0025
 
 function clamp(v, min, max) {
   return Math.min(max, Math.max(min, v))
@@ -28,6 +31,7 @@ export default function CanvasStage({
   onRejectAutoLabel,
   onDismissSuggestion,
   zoom,
+  onZoomChange,
   panMode,
   panOffset,
   onPanOffsetChange,
@@ -39,6 +43,26 @@ export default function CanvasStage({
 }) {
   const { containerRef, rect: baseRect } = useContainRect(VIDEO_SIZE)
   const svgRef = useRef(null)
+
+  // Trackpad pinch/scroll and mouse-wheel zoom. Kept off React's onWheel
+  // (passive by default, so preventDefault silently no-ops) via a native
+  // listener instead. zoomRef avoids re-binding the listener on every zoom
+  // change.
+  const zoomRef = useRef(zoom)
+  useEffect(() => {
+    zoomRef.current = zoom
+  }, [zoom])
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el || !onZoomChange) return
+    const handleWheel = (e) => {
+      e.preventDefault()
+      onZoomChange(clamp(zoomRef.current - e.deltaY * WHEEL_ZOOM_SENSITIVITY, ZOOM_MIN, ZOOM_MAX))
+    }
+    el.addEventListener('wheel', handleWheel, { passive: false })
+    return () => el.removeEventListener('wheel', handleWheel)
+  }, [onZoomChange]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const [draftBox, setDraftBox] = useState(null)
   const [draftPolygon, setDraftPolygon] = useState(null)
@@ -149,6 +173,7 @@ export default function CanvasStage({
   }
 
   const visibleAnnotations = annotations.filter((a) => labelVisibility.has(a.labelId))
+  const isDrawing = Boolean(draftBox || draftLine || draftPolygon)
 
   const cursorClass = panMode ? (panDrag ? 'cursor-grabbing' : 'cursor-grab') : drawingDisabled ? '' : 'cursor-crosshair'
 
@@ -197,9 +222,11 @@ export default function CanvasStage({
               width={rect.width}
               height={rect.height}
             >
-              {visibleAnnotations.map((a) => (
-                <AnnotationShape key={a.id} annotation={a} selected={a.id === selectedId} px={px} py={py} onSelect={onSelect} />
-              ))}
+              <g style={{ opacity: isDrawing ? 0.2 : 1, transition: 'opacity 150ms ease' }}>
+                {visibleAnnotations.map((a) => (
+                  <AnnotationShape key={a.id} annotation={a} selected={a.id === selectedId} px={px} py={py} onSelect={onSelect} />
+                ))}
+              </g>
 
               {autoLabelMode &&
                 suggestions.map((s, i) => (
