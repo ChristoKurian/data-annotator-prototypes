@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import { Check } from 'lucide-react'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { track } from '@/lib/analytics'
 import TopBar from './TopBar'
 import LeftRail from './LeftRail'
@@ -16,7 +19,17 @@ function capitalize(s) {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
+function formatDuration(ms) {
+  const totalSeconds = Math.max(0, Math.round(ms / 1000))
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return minutes === 0 ? `${seconds}s` : `${minutes}m ${seconds}s`
+}
+
 export default function DataAnnotatorApp() {
+  const [started, setStarted] = useState(false)
+  const [submission, setSubmission] = useState(null)
+
   const [activeTool, setActiveTool] = useState('box')
   const [annotations, setAnnotations] = useState([])
   const [selectedId, setSelectedId] = useState(null)
@@ -40,7 +53,7 @@ export default function DataAnnotatorApp() {
 
   const [toast, setToast] = useState(null)
 
-  const taskStartRef = useRef(Date.now())
+  const taskStartRef = useRef(null)
 
   useEffect(() => {
     track('annotator_opened')
@@ -51,6 +64,12 @@ export default function DataAnnotatorApp() {
     const t = setTimeout(() => setToast(null), 2600)
     return () => clearTimeout(t)
   }, [toast])
+
+  const handleStart = () => {
+    taskStartRef.current = Date.now()
+    setStarted(true)
+    track('task_started')
+  }
 
   const handleTogglePlay = () => {
     const v = videoRef.current
@@ -132,18 +151,41 @@ export default function DataAnnotatorApp() {
   }
 
   const handleSubmit = () => {
-    setToast('Task submitted')
+    if (submission) return
+    const duration_ms = Date.now() - (taskStartRef.current ?? Date.now())
+    setSubmission({ durationMs: duration_ms, count: annotations.length })
     track('task_submitted', {
-      duration_ms: Date.now() - taskStartRef.current,
+      duration_ms,
       annotation_count: annotations.length,
     })
   }
 
   const filterCss = `brightness(${brightUp ? 1.18 : 1}) contrast(${contrastUp ? 1.18 : 1})`
 
+  if (!started) {
+    return (
+      <div className="flex h-screen w-screen flex-col items-center justify-center gap-6 bg-zinc-950 text-zinc-100">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <h1 className="text-lg font-medium text-zinc-200">Data Annotation Task</h1>
+          <p className="text-sm text-zinc-500">Draw a shape, then pick its label from the search popup.</p>
+        </div>
+        <Button size="lg" onClick={handleStart} className="bg-blue-600 px-8 text-white hover:bg-blue-500">
+          Start
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex h-screen w-screen flex-col overflow-hidden bg-zinc-950 text-zinc-100">
+      <div className="relative h-screen w-screen overflow-hidden bg-zinc-950 text-zinc-100">
+      <div
+        className={cn(
+          'flex h-full w-full flex-col transition-all duration-300',
+          submission && 'pointer-events-none opacity-40 grayscale',
+        )}
+        inert={submission ? true : undefined}
+      >
         <TopBar
           activeTool={activeTool}
           onSelectTool={handleSelectTool}
@@ -224,12 +266,28 @@ export default function DataAnnotatorApp() {
             visibleSuggestions={visibleSuggestions}
           />
         </div>
+      </div>
 
-        {toast && (
-          <div className="pointer-events-none fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-full border border-white/10 bg-zinc-900/95 px-4 py-2 text-sm text-zinc-100 shadow-xl">
-            {toast}
+      {toast && (
+        <div className="pointer-events-none fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-full border border-white/10 bg-zinc-900/95 px-4 py-2 text-sm text-zinc-100 shadow-xl">
+          {toast}
+        </div>
+      )}
+
+      {submission && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-zinc-950/70 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-white/10 bg-zinc-900 px-8 py-7 text-center shadow-2xl">
+            <div className="flex size-10 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400">
+              <Check className="size-5" />
+            </div>
+            <div className="text-base font-medium text-zinc-100">Activity completed</div>
+            <div className="text-sm text-zinc-500">Completed in {formatDuration(submission.durationMs)}</div>
+            <Button asChild className="mt-2 bg-blue-600 text-white hover:bg-blue-500">
+              <a href="/v2.html">Try the V2 flow</a>
+            </Button>
           </div>
-        )}
+        </div>
+      )}
       </div>
     </TooltipProvider>
   )

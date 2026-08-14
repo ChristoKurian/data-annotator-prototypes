@@ -19,7 +19,7 @@ export const ANNOTATION_COLORS = [
 
 export const LABEL_OPTIONS = [
   'Car',
-  'Face',
+  'Bike',
   'Pedestrian',
   'Plate',
   'Road Sign',

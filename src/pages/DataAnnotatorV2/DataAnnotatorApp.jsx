@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import { Check } from 'lucide-react'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { track } from '@/lib/analytics'
 import TopBar from './TopBar'
 import CanvasToolbar from './CanvasToolbar'
@@ -8,7 +11,17 @@ import AnnotationsDrawer from './AnnotationsDrawer'
 import BottomBar from './BottomBar'
 import { LABELS, LABEL_COLORS, AUTO_LABEL_SUGGESTIONS, FRAME_RATE, TOTAL_FRAMES, randomId, labelIdByName } from './mockData'
 
+function formatDuration(ms) {
+  const totalSeconds = Math.max(0, Math.round(ms / 1000))
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return minutes === 0 ? `${seconds}s` : `${minutes}m ${seconds}s`
+}
+
 export default function DataAnnotatorApp() {
+  const [started, setStarted] = useState(false)
+  const [submission, setSubmission] = useState(null)
+
   const [tool, setTool] = useState('box')
   const [lastShapeTool, setLastShapeTool] = useState('box')
   const [activeLabelId, setActiveLabelId] = useState(LABELS[0].id)
@@ -17,6 +30,7 @@ export default function DataAnnotatorApp() {
   const [annotations, setAnnotations] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [annotationBump, setAnnotationBump] = useState(0)
 
   const [history, setHistory] = useState([])
   const [future, setFuture] = useState([])
@@ -37,7 +51,7 @@ export default function DataAnnotatorApp() {
 
   const autoLabelMode = tool === 'auto'
 
-  const taskStartRef = useRef(Date.now())
+  const taskStartRef = useRef(null)
 
   useEffect(() => {
     track('annotator_opened')
@@ -48,6 +62,12 @@ export default function DataAnnotatorApp() {
     const t = setTimeout(() => setToast(null), 2600)
     return () => clearTimeout(t)
   }, [toast])
+
+  const handleStart = () => {
+    taskStartRef.current = Date.now()
+    setStarted(true)
+    track('task_started')
+  }
 
   // Entering Auto Label pre-selects every label that has a trained model.
   useEffect(() => {
@@ -115,6 +135,7 @@ export default function DataAnnotatorApp() {
     // other layer the user wants to see again has to be switched back on
     // by hand, one at a time.
     setLabelVisibility(new Set([label.id]))
+    setAnnotationBump((n) => n + 1)
     track('annotation_created', { type: annotation.type, label: annotation.label, annotation_count: annotations.length + 1 })
   }
 
@@ -200,9 +221,11 @@ export default function DataAnnotatorApp() {
   }
 
   const handleSubmit = () => {
-    setToast('Task submitted')
+    if (submission) return
+    const duration_ms = Date.now() - (taskStartRef.current ?? Date.now())
+    setSubmission({ durationMs: duration_ms, count: annotations.length })
     track('task_submitted', {
-      duration_ms: Date.now() - taskStartRef.current,
+      duration_ms,
       annotation_count: annotations.length,
     })
   }
@@ -227,9 +250,30 @@ export default function DataAnnotatorApp() {
 
   const activeLabel = LABELS.find((l) => l.id === activeLabelId) ?? null
 
+  if (!started) {
+    return (
+      <div className="flex h-screen w-screen flex-col items-center justify-center gap-6 bg-zinc-950 text-zinc-100">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <h1 className="text-lg font-medium text-zinc-200">Data Annotation Task</h1>
+          <p className="text-sm text-zinc-500">Pick a label first, then draw every instance of it in a row.</p>
+        </div>
+        <Button size="lg" onClick={handleStart} className="bg-blue-600 px-8 text-white hover:bg-blue-500">
+          Start
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex h-screen w-screen flex-col overflow-hidden bg-zinc-950 text-zinc-100">
+      <div className="relative h-screen w-screen overflow-hidden bg-zinc-950 text-zinc-100">
+      <div
+        className={cn(
+          'flex h-full w-full flex-col transition-all duration-300',
+          submission && 'pointer-events-none opacity-40 grayscale',
+        )}
+        inert={submission ? true : undefined}
+      >
         <TopBar
           tool={tool}
           onSelectTool={handleSelectTool}
@@ -242,7 +286,6 @@ export default function DataAnnotatorApp() {
           labelVisibility={labelVisibility}
           onToggleLabelVisibility={handleToggleLabelVisibility}
           exitHref="/"
-          onSubmit={handleSubmit}
         />
 
         <div className="relative flex min-h-0 flex-1">
@@ -255,6 +298,7 @@ export default function DataAnnotatorApp() {
             onDeselect={() => setSelectedId(null)}
             onUpdateAnnotation={handleUpdateAnnotation}
             onDeleteAnnotation={handleDeleteAnnotation}
+            annotationBump={annotationBump}
           />
 
           <div className="flex min-w-0 flex-1 flex-col">
@@ -296,15 +340,35 @@ export default function DataAnnotatorApp() {
                 zoom={zoom}
               />
             </div>
-            <BottomBar frame={frame} onFrameChange={handleFrameChange} playing={playing} onTogglePlay={handleTogglePlay} />
           </div>
         </div>
 
-        {toast && (
-          <div className="pointer-events-none fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-full border border-white/10 bg-zinc-900/95 px-4 py-2 text-sm text-zinc-100 shadow-xl">
-            {toast}
+        <BottomBar
+          frame={frame}
+          onFrameChange={handleFrameChange}
+          playing={playing}
+          onTogglePlay={handleTogglePlay}
+          onSubmit={handleSubmit}
+        />
+      </div>
+
+      {toast && (
+        <div className="pointer-events-none fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-full border border-white/10 bg-zinc-900/95 px-4 py-2 text-sm text-zinc-100 shadow-xl">
+          {toast}
+        </div>
+      )}
+
+      {submission && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-zinc-950/70 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-white/10 bg-zinc-900 px-8 py-7 text-center shadow-2xl">
+            <div className="flex size-10 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400">
+              <Check className="size-5" />
+            </div>
+            <div className="text-base font-medium text-zinc-100">Activity completed</div>
+            <div className="text-sm text-zinc-500">Completed in {formatDuration(submission.durationMs)}</div>
           </div>
-        )}
+        </div>
+      )}
       </div>
     </TooltipProvider>
   )

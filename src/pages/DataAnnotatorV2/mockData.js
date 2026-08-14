@@ -22,7 +22,7 @@ export const ANNOTATION_COLORS = [
 // suggest it — surfaced as a disabled pill with an explanatory tooltip.
 export const LABELS = [
   { id: 'car', name: 'Car', aiAvailable: true },
-  { id: 'face', name: 'Face', aiAvailable: true },
+  { id: 'bike', name: 'Bike', aiAvailable: true },
   { id: 'pedestrian', name: 'Pedestrian', aiAvailable: true },
   { id: 'plate', name: 'Plate', aiAvailable: true },
   { id: 'road-sign', name: 'Road Sign', aiAvailable: false },

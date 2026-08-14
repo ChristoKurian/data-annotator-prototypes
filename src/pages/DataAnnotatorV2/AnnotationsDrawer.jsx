@@ -27,6 +27,7 @@ export default function AnnotationsDrawer({
   onDeselect,
   onUpdateAnnotation,
   onDeleteAnnotation,
+  annotationBump,
 }) {
   const selected = annotations.find((a) => a.id === selectedId)
 
@@ -36,10 +37,13 @@ export default function AnnotationsDrawer({
           whether the panel below is open or closed. */}
       <button
         onClick={() => onOpenChange(!open)}
-        className="z-10 flex w-10 shrink-0 flex-col items-center gap-3 border-r border-white/10 bg-zinc-950 py-4 text-zinc-400 transition hover:bg-zinc-900 hover:text-zinc-100"
+        className="z-10 flex h-full w-10 shrink-0 flex-col items-center justify-center gap-3 border-r border-white/10 bg-zinc-950 text-zinc-400 transition hover:bg-zinc-900 hover:text-zinc-100"
       >
         <ChevronsRight className={cn('size-4 transition-transform', open && 'rotate-180')} />
-        <span className="flex min-w-5 items-center justify-center rounded-full bg-zinc-800 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-100">
+        <span
+          key={annotationBump}
+          className="flex min-w-5 items-center justify-center rounded-full bg-zinc-800 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-100 animate-annotation-bump"
+        >
           {annotations.length}
         </span>
         <span className="[writing-mode:vertical-rl] text-xs font-medium tracking-wide">View Annotations</span>

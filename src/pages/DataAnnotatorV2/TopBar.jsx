@@ -1,6 +1,5 @@
 import { Square, Slash, Hexagon, MapPin, Box, Wand2, ChevronDown, Eye, EyeOff, LogOut, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   DropdownMenu,
@@ -33,7 +32,6 @@ export default function TopBar({
   labelVisibility,
   onToggleLabelVisibility,
   exitHref,
-  onSubmit,
 }) {
   const ToolIcon = TOOL_ICONS[tool] ?? Square
   const toolLabel = ALL_TOOLS.find((t) => t.id === tool)?.label ?? 'Box'
@@ -125,17 +123,12 @@ export default function TopBar({
         })}
       </div>
 
-      <div className="flex items-center gap-2">
-        <a
-          href={exitHref}
-          className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-red-400 transition hover:bg-red-500/10"
-        >
-          <LogOut className="size-3.5" /> Exit
-        </a>
-        <Button onClick={onSubmit} className="bg-blue-600 text-white hover:bg-blue-500">
-          <Check className="size-3.5" /> Submit
-        </Button>
-      </div>
+      <a
+        href={exitHref}
+        className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-red-400 transition hover:bg-red-500/10"
+      >
+        <LogOut className="size-3.5" /> Exit
+      </a>
     </header>
   )
 }

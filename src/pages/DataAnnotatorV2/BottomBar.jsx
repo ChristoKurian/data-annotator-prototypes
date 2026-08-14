@@ -1,5 +1,6 @@
 import { Play, Pause } from 'lucide-react'
 import { Slider } from '@/components/ui/slider'
+import { Button } from '@/components/ui/button'
 import { TOTAL_FRAMES, FRAME_RATE } from './mockData'
 
 function formatTime(seconds) {
@@ -8,7 +9,7 @@ function formatTime(seconds) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-export default function BottomBar({ frame, onFrameChange, playing, onTogglePlay }) {
+export default function BottomBar({ frame, onFrameChange, playing, onTogglePlay, onSubmit }) {
   const elapsed = formatTime((frame - 1) / FRAME_RATE)
   const total = formatTime(TOTAL_FRAMES / FRAME_RATE)
 
@@ -50,6 +51,10 @@ export default function BottomBar({ frame, onFrameChange, playing, onTogglePlay 
       <div className="rounded-md bg-zinc-900 px-3 py-1.5 font-mono text-xs text-zinc-300">
         {elapsed} / {total}
       </div>
+
+      <Button onClick={onSubmit} className="bg-blue-600 text-white hover:bg-blue-500">
+        Submit Task
+      </Button>
     </footer>
   )
 }
