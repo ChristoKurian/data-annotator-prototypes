@@ -188,7 +188,7 @@ export default function DataAnnotatorApp() {
     return (
       <div className="flex h-screen w-screen flex-col items-center justify-center gap-6 bg-zinc-950 text-zinc-100">
         <div className="flex flex-col items-center gap-2 text-center">
-          <h1 className="text-lg font-medium text-zinc-200">Annotate 5 Buses, 25 Cars, and 25 Bikes</h1>
+          <h1 className="text-lg font-medium text-zinc-200">Annotate as many cars, bikes, and buses as you can</h1>
           <p className="text-sm text-zinc-500">Draw a shape, then pick its label from the search popup.</p>
         </div>
         <Button size="lg" onClick={handleStart} className="bg-blue-600 px-8 text-white hover:bg-blue-500">
