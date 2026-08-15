@@ -48,12 +48,20 @@ export default function CanvasStage({
 
   // Trackpad pinch/scroll and mouse-wheel zoom. Kept off React's onWheel
   // (passive by default, so preventDefault silently no-ops) via a native
-  // listener instead. zoomRef avoids re-binding the listener on every zoom
-  // change.
+  // listener instead. Refs mirror the latest zoom/pan/rect so the listener
+  // (bound once) never reads stale values from its closure.
   const zoomRef = useRef(zoom)
+  const panOffsetRef = useRef(panOffset)
+  const baseRectRef = useRef(baseRect)
   useEffect(() => {
     zoomRef.current = zoom
   }, [zoom])
+  useEffect(() => {
+    panOffsetRef.current = panOffset
+  }, [panOffset])
+  useEffect(() => {
+    baseRectRef.current = baseRect
+  }, [baseRect])
 
   // Tracking is debounced separately from the zoom itself so a single
   // continuous scroll/pinch gesture reports as one event, not dozens.
@@ -65,7 +73,31 @@ export default function CanvasStage({
     if (!el || !onZoomChange) return
     const handleWheel = (e) => {
       e.preventDefault()
-      onZoomChange(clamp(zoomRef.current - e.deltaY * WHEEL_ZOOM_SENSITIVITY, ZOOM_MIN, ZOOM_MAX))
+      const prevZoom = zoomRef.current
+      const nextZoom = clamp(prevZoom - e.deltaY * WHEEL_ZOOM_SENSITIVITY, ZOOM_MIN, ZOOM_MAX)
+
+      if (nextZoom !== prevZoom && onPanOffsetChange) {
+        // Re-center the pan offset so whatever point the cursor is over
+        // stays under the cursor after the zoom, instead of the image
+        // always scaling from its center.
+        const base = baseRectRef.current
+        const pan = panOffsetRef.current
+        const bounds = el.getBoundingClientRect()
+        const cursorX = e.clientX - bounds.left
+        const cursorY = e.clientY - bounds.top
+
+        const prevRectX = base.x - (base.width * (prevZoom - 1)) / 2 + pan.x
+        const prevRectY = base.y - (base.height * (prevZoom - 1)) / 2 + pan.y
+        const cursorFracX = (cursorX - prevRectX) / (base.width * prevZoom)
+        const cursorFracY = (cursorY - prevRectY) / (base.height * prevZoom)
+
+        onPanOffsetChange({
+          x: cursorX - base.x + (base.width * (nextZoom - 1)) / 2 - cursorFracX * base.width * nextZoom,
+          y: cursorY - base.y + (base.height * (nextZoom - 1)) / 2 - cursorFracY * base.height * nextZoom,
+        })
+      }
+
+      onZoomChange(nextZoom)
 
       wheelTrackAccumRef.current += e.deltaY
       clearTimeout(wheelTrackTimerRef.current)
@@ -81,7 +113,7 @@ export default function CanvasStage({
     }
     el.addEventListener('wheel', handleWheel, { passive: false })
     return () => el.removeEventListener('wheel', handleWheel)
-  }, [onZoomChange]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [onZoomChange, onPanOffsetChange]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const [draftBox, setDraftBox] = useState(null)
   const [draftPolygon, setDraftPolygon] = useState(null)

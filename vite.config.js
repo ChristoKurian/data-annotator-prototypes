@@ -19,6 +19,7 @@ export default defineConfig({
       input: {
         main: path.resolve(import.meta.dirname, 'index.html'),
         v2: path.resolve(import.meta.dirname, 'v2.html'),
+        report: path.resolve(import.meta.dirname, 'report.html'),
       },
     },
   },

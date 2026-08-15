@@ -1,0 +1,95 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: oklch(1 0 0);
+}
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: 'Geist Variable', sans-serif;
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+}
+
+/* This page is intentionally light-only — the shadcn default light palette,
+   same tokens the rest of the app already ships, no dark variant needed. */
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --radius: 0.625rem;
+
+  /* Categorical colors, not part of the shadcn base palette — same light
+     pastel treatment as the static instrumentation report: car/bike/bus
+     stay soft, stray click stays the one color that demands attention. */
+  --v1: oklch(0.75 0.14 55);
+  --v1-soft: oklch(0.96 0.03 55);
+  --v1-text: oklch(0.48 0.15 45);
+  --v2: oklch(0.65 0.11 185);
+  --v2-soft: oklch(0.95 0.03 185);
+  --v2-text: oklch(0.45 0.1 195);
+  --label-car: oklch(0.75 0.12 250);
+  --label-bike: oklch(0.78 0.13 300);
+  --label-bus: oklch(0.72 0.14 55);
+  --label-stray: oklch(0.42 0.19 25);
+  --success: oklch(0.55 0.15 145);
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex: none;
+  display: inline-block;
+}
+.dot.car { background: var(--label-car); }
+.dot.bike { background: var(--label-bike); }
+.dot.bus { background: var(--label-bus); }
+.dot.stray { background: var(--label-stray); }
+
+@keyframes report-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.live-dot { animation: report-pulse 2s ease-in-out infinite; }
