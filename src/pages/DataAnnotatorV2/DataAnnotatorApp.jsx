@@ -173,6 +173,7 @@ export default function DataAnnotatorApp() {
     setAnnotations(history[history.length - 1])
     setHistory((h) => h.slice(0, -1))
     setSelectedId(null)
+    track('history_action', { action: 'undo', method: 'button' })
   }
 
   const handleRedo = () => {
@@ -181,6 +182,17 @@ export default function DataAnnotatorApp() {
     setAnnotations(future[0])
     setFuture((f) => f.slice(1))
     setSelectedId(null)
+    track('history_action', { action: 'redo', method: 'button' })
+  }
+
+  const handleZoomIn = () => {
+    setZoom((z) => Math.min(2.5, +(z + 0.2).toFixed(2)))
+    track('canvas_zoom', { direction: 'in', method: 'button' })
+  }
+
+  const handleZoomOut = () => {
+    setZoom((z) => Math.max(1, +(z - 0.2).toFixed(2)))
+    track('canvas_zoom', { direction: 'out', method: 'button' })
   }
 
   const visibleSuggestions = AUTO_LABEL_SUGGESTIONS.filter(
@@ -343,8 +355,8 @@ export default function DataAnnotatorApp() {
                 canRedo={future.length > 0}
                 panMode={panMode}
                 onTogglePan={() => setPanMode((v) => !v)}
-                onZoomIn={() => setZoom((z) => Math.min(2.5, +(z + 0.2).toFixed(2)))}
-                onZoomOut={() => setZoom((z) => Math.max(1, +(z - 0.2).toFixed(2)))}
+                onZoomIn={handleZoomIn}
+                onZoomOut={handleZoomOut}
                 onZoomChange={setZoom}
                 zoom={zoom}
               />

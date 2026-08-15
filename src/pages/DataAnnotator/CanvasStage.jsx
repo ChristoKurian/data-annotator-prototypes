@@ -1,8 +1,11 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
+import { track } from '@/lib/analytics'
 import { useContainRect } from './useContainRect'
 import { VIDEO_SIZE, VIDEO_SRC } from './mockData'
 import LabelPicker from './LabelPicker'
+
+const WHEEL_ZOOM_GESTURE_GAP_MS = 200
 
 const MIN_BOX_SIZE = 1.2 // percent
 const CLOSE_RADIUS = 2.2 // percent, distance to first point that closes a polygon
@@ -31,6 +34,32 @@ export default function CanvasStage({
 }) {
   const { containerRef, rect: baseRect } = useContainRect(VIDEO_SIZE)
   const svgRef = useRef(null)
+
+  // v1 has no wheel/trackpad zoom — this listener does nothing to the
+  // canvas, it only reports the gesture so we can measure how often users
+  // try to scroll-zoom and get no response (a likely driver of the
+  // zoom-button rage-clicks seen in v1 session data).
+  const wheelAccumRef = useRef(0)
+  const wheelTimerRef = useRef(null)
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const handleWheel = (e) => {
+      wheelAccumRef.current += e.deltaY
+      clearTimeout(wheelTimerRef.current)
+      wheelTimerRef.current = setTimeout(() => {
+        track('canvas_zoom', {
+          direction: wheelAccumRef.current < 0 ? 'in' : 'out',
+          method: 'trackpad',
+          magnitude: Math.round(Math.abs(wheelAccumRef.current)),
+          supported: false,
+        })
+        wheelAccumRef.current = 0
+      }, WHEEL_ZOOM_GESTURE_GAP_MS)
+    }
+    el.addEventListener('wheel', handleWheel, { passive: true })
+    return () => el.removeEventListener('wheel', handleWheel)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const [draftBox, setDraftBox] = useState(null) // {x0,y0,x1,y1} percent
   const [draftPolygon, setDraftPolygon] = useState(null) // {points:[{x,y}], cursor:{x,y}}

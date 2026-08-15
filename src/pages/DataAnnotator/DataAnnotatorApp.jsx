@@ -95,6 +95,21 @@ export default function DataAnnotatorApp() {
     if (v) v.currentTime = (next - 1) / FRAME_RATE
   }
 
+  const handleZoomIn = () => {
+    setZoom((z) => Math.min(2.5, +(z + 0.2).toFixed(2)))
+    track('canvas_zoom', { direction: 'in', method: 'button' })
+  }
+
+  const handleZoomOut = () => {
+    setZoom((z) => Math.max(1, +(z - 0.2).toFixed(2)))
+    track('canvas_zoom', { direction: 'out', method: 'button' })
+  }
+
+  const handleResetZoom = () => {
+    setZoom(1)
+    track('canvas_zoom', { direction: 'reset', method: 'button' })
+  }
+
   const handleSelectTool = (toolId) => {
     setSelectedId(null)
     setActiveTool((cur) => (cur === toolId ? null : toolId))
@@ -215,9 +230,9 @@ export default function DataAnnotatorApp() {
 
         <div className="flex min-h-0 flex-1">
           <LeftRail
-            onZoomIn={() => setZoom((z) => Math.min(2.5, +(z + 0.2).toFixed(2)))}
-            onZoomOut={() => setZoom((z) => Math.max(1, +(z - 0.2).toFixed(2)))}
-            onResetZoom={() => setZoom(1)}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onResetZoom={handleResetZoom}
             brightUp={brightUp}
             onBrightUp={() => setBrightUp((v) => !v)}
             contrastUp={contrastUp}

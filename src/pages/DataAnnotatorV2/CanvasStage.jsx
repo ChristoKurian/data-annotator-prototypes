@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { track } from '@/lib/analytics'
 import { useContainRect } from './useContainRect'
 import { VIDEO_SIZE, VIDEO_SRC } from './mockData'
 import AutoLabelBar from './AutoLabelBar'
@@ -10,6 +11,7 @@ const CLOSE_RADIUS = 2.2 // percent, distance to first point that closes a polyg
 const ZOOM_MIN = 1
 const ZOOM_MAX = 2.5
 const WHEEL_ZOOM_SENSITIVITY = 0.0025
+const WHEEL_ZOOM_GESTURE_GAP_MS = 200
 
 function clamp(v, min, max) {
   return Math.min(max, Math.max(min, v))
@@ -53,12 +55,29 @@ export default function CanvasStage({
     zoomRef.current = zoom
   }, [zoom])
 
+  // Tracking is debounced separately from the zoom itself so a single
+  // continuous scroll/pinch gesture reports as one event, not dozens.
+  const wheelTrackAccumRef = useRef(0)
+  const wheelTrackTimerRef = useRef(null)
+
   useEffect(() => {
     const el = containerRef.current
     if (!el || !onZoomChange) return
     const handleWheel = (e) => {
       e.preventDefault()
       onZoomChange(clamp(zoomRef.current - e.deltaY * WHEEL_ZOOM_SENSITIVITY, ZOOM_MIN, ZOOM_MAX))
+
+      wheelTrackAccumRef.current += e.deltaY
+      clearTimeout(wheelTrackTimerRef.current)
+      wheelTrackTimerRef.current = setTimeout(() => {
+        track('canvas_zoom', {
+          direction: wheelTrackAccumRef.current < 0 ? 'in' : 'out',
+          method: 'trackpad',
+          magnitude: Math.round(Math.abs(wheelTrackAccumRef.current)),
+          supported: true,
+        })
+        wheelTrackAccumRef.current = 0
+      }, WHEEL_ZOOM_GESTURE_GAP_MS)
     }
     el.addEventListener('wheel', handleWheel, { passive: false })
     return () => el.removeEventListener('wheel', handleWheel)

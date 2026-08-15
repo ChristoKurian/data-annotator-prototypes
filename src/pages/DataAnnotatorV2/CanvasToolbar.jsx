@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { Undo2, Redo2, Move, Plus, Minus } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { track } from '@/lib/analytics'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 const ZOOM_MIN = 1
@@ -24,6 +25,7 @@ export default function CanvasToolbar({
 }) {
   const trackRef = useRef(null)
   const fillPercent = ((zoom - ZOOM_MIN) / (ZOOM_MAX - ZOOM_MIN)) * 100
+  const dragStartZoomRef = useRef(zoom)
 
   const zoomFromClientY = (clientY) => {
     const rect = trackRef.current.getBoundingClientRect()
@@ -33,12 +35,26 @@ export default function CanvasToolbar({
 
   const handlePointerDown = (e) => {
     e.currentTarget.setPointerCapture(e.pointerId)
+    dragStartZoomRef.current = zoom
     onZoomChange(zoomFromClientY(e.clientY))
   }
 
   const handlePointerMove = (e) => {
     if (e.buttons !== 1) return
     onZoomChange(zoomFromClientY(e.clientY))
+  }
+
+  // One event per drag gesture (not per pointermove tick), reporting net
+  // direction/magnitude so slider usage is comparable to button and
+  // trackpad zoom in the analysis.
+  const handlePointerUp = () => {
+    const delta = zoom - dragStartZoomRef.current
+    if (delta === 0) return
+    track('canvas_zoom', {
+      direction: delta > 0 ? 'in' : 'out',
+      method: 'slider',
+      magnitude: Math.round(Math.abs(delta) * 100),
+    })
   }
 
   return (
@@ -52,6 +68,7 @@ export default function CanvasToolbar({
         ref={trackRef}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
         className="flex h-16 w-6 touch-none items-center justify-center py-1"
       >
         <div className="relative h-full w-1 cursor-pointer rounded-full bg-zinc-700">
