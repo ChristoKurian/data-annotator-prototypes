@@ -130,16 +130,19 @@ function Header({ data, loading, idle, onRefresh }) {
         <span className="rounded-md border border-border bg-muted px-2.5 py-1 text-muted-foreground">
           Last updated <b className="font-medium text-foreground">{fmtClock(data?.generatedAt)}</b>
         </span>
-        {idle && (
-          <button
-            type="button"
-            onClick={onRefresh}
-            className="rounded-md border border-border bg-card px-2.5 py-1 font-medium text-foreground shadow-sm transition hover:bg-accent"
-          >
-            Refresh now
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onRefresh}
+          disabled={!idle}
+          className="rounded-md border border-border bg-card px-2.5 py-1 font-medium text-foreground shadow-sm transition hover:enabled:bg-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+        >
+          Refresh now
+        </button>
       </div>
+      <p className="mt-2 text-xs text-muted-foreground">
+        New completions typically show up here within 1–2 minutes — PostHog needs a few seconds to ingest each
+        event, and this page itself re-checks every 45 seconds while open.
+      </p>
     </header>
   )
 }
