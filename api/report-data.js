@@ -16,6 +16,28 @@ const MIN_ANNOTATIONS = 30
 
 const UUID_RE = /^[0-9a-fA-F-]{8,40}$/
 
+// One-off correction, not a general rule: in this specific session's v2
+// run, the tester's first label click landed on "Ad Banner" instead of
+// "Bike" and stayed stuck there for 102 shapes before they noticed and
+// switched — the last few clicks after the switch are genuine "Bike"
+// clicks made while re-labeling, not new annotations, so they're dropped
+// rather than double-counted. Applied to both the annotation count and
+// the label sequence so the two stay consistent. Nothing else is
+// corrected this way — any other session's mislabels show up honestly as
+// stray clicks.
+const SESSION_CORRECTIONS = {
+  '01a0046d-3177-75f5-a4b4-549e99ed1d32': {
+    v2: { relabel: { 'Ad Banner': 'Bike' }, dropTrailing: 4 },
+  },
+}
+
+function applySessionCorrection(sessionId, version, labels) {
+  const fix = SESSION_CORRECTIONS[sessionId]?.[version]
+  if (!fix) return labels
+  const relabeled = labels.map((l) => fix.relabel?.[l] ?? l)
+  return fix.dropTrailing ? relabeled.slice(0, Math.max(0, relabeled.length - fix.dropTrailing)) : relabeled
+}
+
 async function hogql(apiKey, query) {
   const res = await fetch(`${HOST}/api/projects/${PROJECT_ID}/query/`, {
     method: 'POST',
@@ -159,12 +181,16 @@ export default async function handler(req, res) {
       clicksBySession.set(`${row.session_id}:${row.version}`, row.clicks)
     }
 
-    const sessions = qualifying.map((r) => ({
-      sessionId: r.session_id,
-      completedAt: r.v2_submitted,
-      v1: { annotations: r.v1_ann, durationMs: r.v1_dur, clicks: clicksBySession.get(`${r.session_id}:v1`) || 0 },
-      v2: { annotations: r.v2_ann, durationMs: r.v2_dur, clicks: clicksBySession.get(`${r.session_id}:v2`) || 0 },
-    }))
+    const sessions = qualifying.map((r) => {
+      const v2Fix = SESSION_CORRECTIONS[r.session_id]?.v2
+      const v2Annotations = v2Fix?.dropTrailing ? r.v2_ann - v2Fix.dropTrailing : r.v2_ann
+      return {
+        sessionId: r.session_id,
+        completedAt: r.v2_submitted,
+        v1: { annotations: r.v1_ann, durationMs: r.v1_dur, clicks: clicksBySession.get(`${r.session_id}:v1`) || 0 },
+        v2: { annotations: v2Annotations, durationMs: r.v2_dur, clicks: clicksBySession.get(`${r.session_id}:v2`) || 0 },
+      }
+    })
 
     const sumBy = (arr, fn) => arr.reduce((s, x) => s + fn(x), 0)
     const v1Totals = {
@@ -229,8 +255,8 @@ export default async function handler(req, res) {
 
     let v1SwitchTotal = 0, v1TransitionTotal = 0, v2SwitchTotal = 0, v2TransitionTotal = 0
     const labelSequencing = sessions.slice(0, MAX_DISPLAYED_SESSIONS).map((s) => {
-      const v1Labels = labelsBySessionVersion.get(`${s.sessionId}:v1`) || []
-      const v2Labels = labelsBySessionVersion.get(`${s.sessionId}:v2`) || []
+      const v1Labels = applySessionCorrection(s.sessionId, 'v1', labelsBySessionVersion.get(`${s.sessionId}:v1`) || [])
+      const v2Labels = applySessionCorrection(s.sessionId, 'v2', labelsBySessionVersion.get(`${s.sessionId}:v2`) || [])
       const v1Blocks = runLengthEncode(v1Labels)
       const v2Blocks = runLengthEncode(v2Labels)
       v1SwitchTotal += Math.max(0, v1Blocks.length - 1)

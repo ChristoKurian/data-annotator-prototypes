@@ -164,7 +164,7 @@ function EmptyState() {
 }
 
 function Card({ children, className = '' }) {
-  return <div className={`rounded-lg border border-border bg-card p-4 shadow-sm ${className}`}>{children}</div>
+  return <div className={`rounded-lg border border-border bg-card p-4 ${className}`}>{children}</div>
 }
 
 function SectionHead({ title, tag }) {
@@ -358,9 +358,59 @@ function DotGrid({ blocks }) {
   )
 }
 
+function ViewToggle({ options, active, onChange }) {
+  return (
+    <div className="mb-5 inline-flex gap-0.5 rounded-lg bg-muted p-0.5">
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => onChange(opt.value)}
+          className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+            active === opt.value ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function SessionLabelRow({ session, sessionNumber }) {
+  return (
+    <Card>
+      <div className="mb-2 font-mono text-[11px] text-muted-foreground">Session {sessionNumber}</div>
+      <div className="flex flex-col gap-2.5">
+        <div className="flex items-start gap-2">
+          <VChip version="v1" />
+          <DotGrid blocks={session.v1.blocks} />
+        </div>
+        <div className="flex items-start gap-2">
+          <VChip version="v2" />
+          <DotGrid blocks={session.v2.blocks} />
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+function VersionOnlyRow({ session, sessionNumber, version }) {
+  return (
+    <Card>
+      <div className="mb-2 flex items-center justify-between">
+        <span className="font-mono text-[11px] text-muted-foreground">Session {sessionNumber}</span>
+      </div>
+      <DotGrid blocks={session[version].blocks} />
+    </Card>
+  )
+}
+
 function LabelSequencing({ sessions, batching }) {
+  const [view, setView] = useState('grouped')
   const v1Rate = batching.v1.transitions > 0 ? (batching.v1.switches / batching.v1.transitions) * 100 : 0
   const v2Rate = batching.v2.transitions > 0 ? (batching.v2.switches / batching.v2.transitions) * 100 : 0
+
   return (
     <section>
       <SectionHead title="Label sequencing: batched or scattered?" />
@@ -388,23 +438,47 @@ function LabelSequencing({ sessions, batching }) {
         </div>
       </div>
 
-      <div className="flex flex-col gap-5">
-        {sessions.map((s, i) => (
-          <Card key={s.sessionId}>
-            <div className="mb-2 font-mono text-[11px] text-muted-foreground">Session {sessions.length - i}</div>
-            <div className="flex flex-col gap-2.5">
-              <div className="flex items-start gap-2">
-                <VChip version="v1" />
-                <DotGrid blocks={s.v1.blocks} />
-              </div>
-              <div className="flex items-start gap-2">
-                <VChip version="v2" />
-                <DotGrid blocks={s.v2.blocks} />
-              </div>
+      <ViewToggle
+        active={view}
+        onChange={setView}
+        options={[
+          { value: 'grouped', label: 'Grouped: v1 vs v2' },
+          { value: 'individual', label: 'Individual: session by session' },
+        ]}
+      />
+
+      {view === 'individual' && (
+        <div className="flex flex-col gap-5">
+          {sessions.map((s, i) => (
+            <SessionLabelRow key={s.sessionId} session={s} sessionNumber={sessions.length - i} />
+          ))}
+        </div>
+      )}
+
+      {view === 'grouped' && (
+        <div className="flex flex-col gap-8">
+          <div>
+            <div className="mb-3 flex items-center gap-2 font-mono text-xs uppercase tracking-wide text-muted-foreground">
+              <VChip version="v1" /> all sessions
             </div>
-          </Card>
-        ))}
-      </div>
+            <div className="flex flex-col gap-3">
+              {sessions.map((s, i) => (
+                <VersionOnlyRow key={s.sessionId} session={s} sessionNumber={sessions.length - i} version="v1" />
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="mb-3 flex items-center gap-2 font-mono text-xs uppercase tracking-wide text-muted-foreground">
+              <VChip version="v2" /> all sessions
+            </div>
+            <div className="flex flex-col gap-3">
+              {sessions.map((s, i) => (
+                <VersionOnlyRow key={s.sessionId} session={s} sessionNumber={sessions.length - i} version="v2" />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }
