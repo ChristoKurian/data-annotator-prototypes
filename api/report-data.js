@@ -84,7 +84,8 @@ export default async function handler(req, res) {
        )
        GROUP BY session_id
        HAVING v1_ann IS NOT NULL AND v2_ann IS NOT NULL
-       ORDER BY v2_submitted DESC`,
+       ORDER BY v2_submitted DESC
+       LIMIT 2000`,
     )
 
     const now = Date.now()
@@ -110,6 +111,11 @@ export default async function handler(req, res) {
     }
 
     const ids = idList(qualifying.map((r) => r.session_id))
+    // Label sequencing only ever renders the displayed (latest) slice, and
+    // annotation_created is high-volume (one row per shape drawn) — scoping
+    // this query to just those sessions keeps it well under any row cap
+    // regardless of how many sessions have qualified all-time.
+    const displayedIds = idList(qualifying.slice(0, MAX_DISPLAYED_SESSIONS).map((r) => r.session_id))
 
     const [clickTotalRows, clicksByElementRows, zoomRows, labelRows] = await Promise.all([
       hogql(
@@ -117,7 +123,8 @@ export default async function handler(req, res) {
         `SELECT $session_id AS session_id, properties.prototype_version AS version, count() AS clicks
          FROM events
          WHERE event = '$autocapture' AND $session_id IN (${ids})
-         GROUP BY session_id, version`,
+         GROUP BY session_id, version
+         LIMIT 5000`,
       ),
       hogql(
         apiKey,
@@ -126,21 +133,24 @@ export default async function handler(req, res) {
          WHERE event = '$autocapture' AND $session_id IN (${ids})
            AND properties.$el_text IS NOT NULL AND properties.$el_text != ''
          GROUP BY version, el_text
-         ORDER BY cnt DESC`,
+         ORDER BY cnt DESC
+         LIMIT 500`,
       ),
       hogql(
         apiKey,
         `SELECT properties.prototype_version AS version, event, properties.method AS method, properties.direction AS direction, count() AS cnt
          FROM events
          WHERE event IN ('canvas_zoom', '$rageclick') AND $session_id IN (${ids})
-         GROUP BY version, event, method, direction`,
+         GROUP BY version, event, method, direction
+         LIMIT 500`,
       ),
       hogql(
         apiKey,
         `SELECT $session_id AS session_id, properties.prototype_version AS version, properties.label AS label, timestamp
          FROM events
-         WHERE event = 'annotation_created' AND $session_id IN (${ids})
-         ORDER BY session_id, version, timestamp`,
+         WHERE event = 'annotation_created' AND $session_id IN (${displayedIds})
+         ORDER BY session_id, version, timestamp
+         LIMIT 50000`,
       ),
     ])
 
