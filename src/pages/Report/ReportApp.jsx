@@ -120,7 +120,9 @@ function Header({ data, loading, idle, onRefresh }) {
         <span>·</span>
         <span>{fmtClock(data?.generatedAt)}</span>
       </div>
-      <h1 className="mt-3 text-3xl font-semibold tracking-tight text-balance">Data Annotator: v1 vs v2</h1>
+      <h1 className="mt-3 text-3xl font-semibold tracking-tight text-balance">
+        Data Annotator: Existing Interaction vs Proposed Interaction
+      </h1>
       <p className="mt-2 max-w-xl text-muted-foreground">
         Every visitor who completes both prototypes adds to these numbers. Sessions under 24 hours old count
         immediately; after that they need 30+ annotations on both sides to stay counted, so quick test runs don't
@@ -160,7 +162,7 @@ function LoadingState() {
 function EmptyState() {
   return (
     <div className="mt-10 rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">
-      No sessions have completed both v1 and v2 yet. Try the flow yourself from the prototype — this page updates
+      No sessions have completed both Existing and Proposed yet. Try the flow yourself from the prototype — this page updates
       automatically once a session qualifies.
     </div>
   )
@@ -185,10 +187,10 @@ function SectionHead({ title, tag }) {
 
 function HeadlineStats({ aggregate, sessionCount }) {
   const stats = [
-    { label: 'Sessions completing both v1 and v2', value: fmtNum(sessionCount) },
-    { label: 'Faster per annotation in v2', value: fmtPct(aggregate.fasterPerAnnotationPct) },
-    { label: 'Fewer clicks in v2', value: fmtPct(aggregate.fewerClicksPct) },
-    { label: 'Avg time per annotation (v1 / v2)', value: `${fmtDuration(aggregate.v1.msPerAnnotation)} / ${fmtDuration(aggregate.v2.msPerAnnotation)}` },
+    { label: 'Sessions completing both Existing and Proposed', value: fmtNum(sessionCount) },
+    { label: 'Faster per annotation in Proposed', value: fmtPct(aggregate.fasterPerAnnotationPct) },
+    { label: 'Fewer clicks in Proposed', value: fmtPct(aggregate.fewerClicksPct) },
+    { label: 'Avg time per annotation (Existing / Proposed)', value: `${fmtDuration(aggregate.v1.msPerAnnotation)} / ${fmtDuration(aggregate.v2.msPerAnnotation)}` },
   ]
   return (
     <section>
@@ -204,6 +206,8 @@ function HeadlineStats({ aggregate, sessionCount }) {
   )
 }
 
+const VERSION_LABEL = { v1: 'Existing', v2: 'Proposed' }
+
 function VChip({ version }) {
   const isV1 = version === 'v1'
   return (
@@ -215,7 +219,7 @@ function VChip({ version }) {
       }}
     >
       <span className="h-1.5 w-1.5 rounded-full" style={{ background: isV1 ? 'var(--v1)' : 'var(--v2)' }} />
-      {version.toUpperCase()}
+      {VERSION_LABEL[version]}
     </span>
   )
 }
@@ -445,7 +449,7 @@ function LabelSequencing({ sessions, batching }) {
         active={view}
         onChange={setView}
         options={[
-          { value: 'grouped', label: 'Grouped: v1 vs v2' },
+          { value: 'grouped', label: 'Grouped: Existing vs Proposed' },
           { value: 'individual', label: 'Individual: session by session' },
         ]}
       />
