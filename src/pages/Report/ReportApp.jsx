@@ -121,7 +121,7 @@ function Header({ data, loading, idle, onRefresh }) {
         <span>{fmtClock(data?.generatedAt)}</span>
       </div>
       <h1 className="mt-3 text-3xl font-semibold tracking-tight text-balance">
-        Data Annotator: Existing Interaction vs Proposed Interaction
+        User Analytics - Existing vs Proposed
       </h1>
       <p className="mt-2 max-w-xl text-muted-foreground">
         Every visitor who completes both prototypes adds to these numbers. Sessions under 24 hours old count
@@ -239,7 +239,7 @@ function TaskCompletion({ sessions, displayed, total }) {
   return (
     <section>
       <SectionHead title="Task completion, per session" tag={`showing latest ${displayed} of ${total}`} />
-      <div className="flex flex-col gap-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {sessions.map((s, i) => {
           const maxDur = Math.max(s.v1.durationMs, s.v2.durationMs)
           return (
